@@ -1,6 +1,8 @@
 #!/bin/bash
 
-SLACK_WEBHOOK_URL="https://hooks.slack.com/services/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"
+SLACK_WEBHOOK_URL="https://hooks.slack.com/services/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"
+SLACK_BOT_TOKEN="xoxb-5667922673987-9398074401537-vR5PwrVxjxdN6egufESEwx6G"
+SLACK_CHANNEL="C09BLQS50BT"  # claude-code-logs 채널 ID
 
 # Hook 데이터 읽기
 input=$(cat)
@@ -29,17 +31,27 @@ fi
 # 쓰레드 TS 관리 함수들
 get_thread_ts() {
     local key="$1"
+    # 캐시 파일이 없으면 생성
+    if [ ! -f "$THREAD_CACHE_FILE" ]; then
+        mkdir -p "$(dirname "$THREAD_CACHE_FILE")"
+        echo '{}' > "$THREAD_CACHE_FILE"
+    fi
     jq -r ".\"$key\" // \"\"" "$THREAD_CACHE_FILE" 2>/dev/null || echo ""
 }
 
 save_thread_ts() {
     local key="$1"
     local ts="$2"
+    # 캐시 파일이 없으면 생성
+    if [ ! -f "$THREAD_CACHE_FILE" ]; then
+        mkdir -p "$(dirname "$THREAD_CACHE_FILE")"
+        echo '{}' > "$THREAD_CACHE_FILE"
+    fi
     local temp_file=$(mktemp)
     jq ". + {\"$key\": \"$ts\"}" "$THREAD_CACHE_FILE" > "$temp_file" && mv "$temp_file" "$THREAD_CACHE_FILE"
 }
 
-# Slack 메시지 전송 함수
+# Slack 메시지 전송 함수 (Bot API 사용)
 send_slack_message() {
     local text="$1"
     local project="$2"
@@ -49,75 +61,49 @@ send_slack_message() {
     if [ -n "$thread_ts" ]; then
         # 쓰레드 응답
         payload=$(jq -n \
+            --arg channel "$SLACK_CHANNEL" \
             --arg text "$text" \
-            --arg project "$project" \
             --arg thread_ts "$thread_ts" \
             '{
-                username: "Claude Code Monitor",
-                icon_emoji: ":claude:",
+                channel: $channel,
+                text: $text,
                 thread_ts: $thread_ts,
-                attachments: [{
-                    color: "#36a64f",
-                    mrkdwn_in: ["text"],
-                    text: $text,
-                    fields: [
-                        {
-                            title: "Project",
-                            value: $project,
-                            short: true
-                        }
-                    ],
-                    footer: "Claude Code",
-                    ts: (now | floor)
-                }]
+                username: "Claude Code Monitor",
+                icon_emoji: ":claude:"
             }')
     else
         # 새 메시지 (쓰레드 시작)
+        local header_text="*🚀 ${project}* | 👤 ${user_name} | 📅 ${current_date}"
         payload=$(jq -n \
-            --arg text "$text" \
-            --arg project "$project" \
-            --arg date "$current_date" \
-            --arg user "$user_name" \
+            --arg channel "$SLACK_CHANNEL" \
+            --arg text "$header_text\n\n$text" \
             '{
+                channel: $channel,
+                text: $text,
                 username: "Claude Code Monitor",
-                icon_emoji: ":claude:",
-                attachments: [{
-                    color: "#36a64f",
-                    mrkdwn_in: ["text"],
-                    text: $text,
-                    fields: [
-                        {
-                            title: "Project",
-                            value: $project,
-                            short: true
-                        },
-                        {
-                            title: "User",
-                            value: $user,
-                            short: true
-                        },
-                        {
-                            title: "Date",
-                            value: $date,
-                            short: true
-                        }
-                    ],
-                    footer: "Claude Code Thread Start",
-                    ts: (now | floor)
-                }]
+                icon_emoji: ":claude:"
             }')
     fi
     
-    # Slack으로 전송하고 응답에서 ts 추출
-    local response=$(curl -X POST -H 'Content-Type: application/json' \
-                          --data "$payload" \
-                          --max-time 3 \
-                          "$SLACK_WEBHOOK_URL" 2>/dev/null)
+    # Slack Bot API로 전송
+    local response=$(curl -X POST \
+        -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
+        -H "Content-Type: application/json" \
+        --data "$payload" \
+        --max-time 5 \
+        "https://slack.com/api/chat.postMessage" 2>/dev/null)
     
-    # 새 메시지인 경우 ts를 캐시에 저장 (Webhook은 ts를 반환하지 않으므로 현재 시간 사용)
+    # 새 메시지인 경우 응답에서 ts 추출하여 저장
     if [ -z "$thread_ts" ]; then
-        local new_ts=$(date +%s.%N | cut -c1-16)
-        save_thread_ts "$thread_key" "$new_ts"
+        local new_ts=$(echo "$response" | jq -r '.ts // empty')
+        if [ -n "$new_ts" ] && [ "$new_ts" != "null" ]; then
+            save_thread_ts "$thread_key" "$new_ts"
+            echo "새 쓰레드 생성: $new_ts" >&2
+        else
+            echo "쓰레드 생성 실패: $response" >&2
+        fi
+    else
+        echo "쓰레드에 메시지 추가 완료" >&2
     fi
 }
 
