@@ -11,6 +11,116 @@ prompt=$(echo "$input" | jq -r '.prompt // empty')
 # 프로젝트 이름 추출
 project_name=$(basename "$(dirname "$transcript_path")" | sed 's/^-Users-[^-]*-//' | tr '-' '/')
 
+# 사용자 이름 및 날짜 추출
+user_name=$(whoami)
+current_date=$(date '+%Y-%m-%d')
+thread_key="${user_name}_${current_date}"
+
+# 프로젝트별 쓰레드 캐시 파일 설정 (현재 작업 디렉토리 사용)
+project_claude_dir="$(pwd)/.claude"
+THREAD_CACHE_FILE="$project_claude_dir/slack-threads.json"
+
+# 쓰레드 캐시 파일 초기화
+if [ ! -f "$THREAD_CACHE_FILE" ]; then
+    mkdir -p "$(dirname "$THREAD_CACHE_FILE")"
+    echo '{}' > "$THREAD_CACHE_FILE"
+fi
+
+# 쓰레드 TS 관리 함수들
+get_thread_ts() {
+    local key="$1"
+    jq -r ".\"$key\" // \"\"" "$THREAD_CACHE_FILE" 2>/dev/null || echo ""
+}
+
+save_thread_ts() {
+    local key="$1"
+    local ts="$2"
+    local temp_file=$(mktemp)
+    jq ". + {\"$key\": \"$ts\"}" "$THREAD_CACHE_FILE" > "$temp_file" && mv "$temp_file" "$THREAD_CACHE_FILE"
+}
+
+# Slack 메시지 전송 함수
+send_slack_message() {
+    local text="$1"
+    local project="$2"
+    local thread_ts="$3"
+    
+    local payload
+    if [ -n "$thread_ts" ]; then
+        # 쓰레드 응답
+        payload=$(jq -n \
+            --arg text "$text" \
+            --arg project "$project" \
+            --arg thread_ts "$thread_ts" \
+            '{
+                username: "Claude Code Monitor",
+                icon_emoji: ":claude:",
+                thread_ts: $thread_ts,
+                attachments: [{
+                    color: "#36a64f",
+                    mrkdwn_in: ["text"],
+                    text: $text,
+                    fields: [
+                        {
+                            title: "Project",
+                            value: $project,
+                            short: true
+                        }
+                    ],
+                    footer: "Claude Code",
+                    ts: (now | floor)
+                }]
+            }')
+    else
+        # 새 메시지 (쓰레드 시작)
+        payload=$(jq -n \
+            --arg text "$text" \
+            --arg project "$project" \
+            --arg date "$current_date" \
+            --arg user "$user_name" \
+            '{
+                username: "Claude Code Monitor",
+                icon_emoji: ":claude:",
+                attachments: [{
+                    color: "#36a64f",
+                    mrkdwn_in: ["text"],
+                    text: $text,
+                    fields: [
+                        {
+                            title: "Project",
+                            value: $project,
+                            short: true
+                        },
+                        {
+                            title: "User",
+                            value: $user,
+                            short: true
+                        },
+                        {
+                            title: "Date",
+                            value: $date,
+                            short: true
+                        }
+                    ],
+                    footer: "Claude Code Thread Start",
+                    ts: (now | floor)
+                }]
+            }')
+    fi
+    
+    # Slack으로 전송하고 응답에서 ts 추출
+    local response=$(curl -X POST -H 'Content-Type: application/json' \
+                          --data "$payload" \
+                          --max-time 3 \
+                          "$SLACK_WEBHOOK_URL" 2>/dev/null)
+    
+    # 새 메시지인 경우 ts를 캐시에 저장 (Webhook은 ts를 반환하지 않으므로 현재 시간 사용)
+    if [ -z "$thread_ts" ]; then
+        local new_ts=$(date +%s.%N | cut -c1-16)
+        save_thread_ts "$thread_key" "$new_ts"
+    fi
+}
+
 # UserPromptSubmit hook 처리
 if [ "$hook_event_name" = "UserPromptSubmit" ] && [ -n "$prompt" ]; then
     payload=$(jq -n \
@@ -59,7 +169,7 @@ if [ "$hook_event_name" = "Stop" ] && [ -n "$transcript_path" ] && [ -f "$transc
         fi
     done)
     
-    # 최근 user 메시지 찾기 (전체 텍스트, 줄바꿈 제거, tool_result, hook 메시지 제외)
+    # 최근 user 메시지 찾기 (전체 텍스트, tool_result, hook 메시지 제외)
     user_text=$(tail -r "$transcript_path" | while IFS= read -r line; do
         if echo "$line" | jq -e '.type == "user" and .message.content' > /dev/null 2>&1; then
             content=$(echo "$line" | jq -r '.message.content')
@@ -85,31 +195,9 @@ ${user_text}
 *🤖 답변:*
 ${assistant_text}"
     
-    payload=$(jq -n \
-        --arg text "$combined_message" \
-        --arg project "$project_name" \
-        '{
-            username: "Claude Code Monitor", 
-            icon_emoji: ":claude:",
-            attachments: [{
-                color: "#36a64f",
-                mrkdwn_in: ["text"],
-                text: $text,
-                fields: [
-                    {
-                        title: "Project",
-                        value: $project, 
-                        short: true
-                    }
-                ],
-                footer: "Claude Code",
-                ts: (now | floor)
-            }]
-        }')
+    # 기존 쓰레드 TS 확인
+    existing_thread_ts=$(get_thread_ts "$thread_key")
     
-    curl -X POST -H 'Content-Type: application/json' \
-         --data "$payload" \
-         --max-time 3 \
-         --silent \
-         "$SLACK_WEBHOOK_URL" &
+    # 쓰레드 시스템으로 메시지 전송
+    send_slack_message "$combined_message" "$project_name" "$existing_thread_ts" &
 fi
