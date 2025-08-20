@@ -4,7 +4,8 @@
       "WebFetch(domain:docs.anthropic.com)",
       "Bash(chmod:*)",
       "Bash(python3:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []

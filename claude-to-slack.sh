@@ -48,11 +48,14 @@ fi
 
 # Stop hook 처리 
 if [ "$hook_event_name" = "Stop" ] && [ -n "$transcript_path" ] && [ -f "$transcript_path" ]; then
-    # 최근 assistant 메시지 찾기 (전체 텍스트)
+    # 최근 assistant 메시지 찾기 (text 타입이 있는 것만)
     assistant_text=$(tail -r "$transcript_path" | while IFS= read -r line; do
         if echo "$line" | jq -e '.type == "assistant" and .message.content' > /dev/null 2>&1; then
-            echo "$line" | jq -r '.message.content[] | select(.type == "text") | .text' 2>/dev/null
-            break
+            text_content=$(echo "$line" | jq -r '.message.content[] | select(.type == "text") | .text' 2>/dev/null)
+            if [ -n "$text_content" ]; then
+                echo "$text_content"
+                break
+            fi
         fi
     done)
     
