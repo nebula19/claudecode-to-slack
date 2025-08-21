@@ -2,7 +2,7 @@
 
 # Slack 설정 파일 경로 (프로젝트별 > 전역)
 PROJECT_SLACK_CONFIG="$(pwd)/.claude/plugins/slack-integration/slack-config.json"
-GLOBAL_SLACK_CONFIG="$HOME/.claude/slack-config.json"
+GLOBAL_SLACK_CONFIG="$HOME/.claude/plugins/slack-integration/slack-config.json"
 
 # 기본값 설정
 SLACK_BOT_TOKEN=""
@@ -25,8 +25,8 @@ else
     echo "다음 중 하나의 설정 파일을 생성해주세요:" >&2
     echo "" >&2
     echo "1. 프로젝트별 설정 (이 프로젝트에서만 사용):" >&2
-    echo "   mkdir -p .claude" >&2
-    echo "   cat > .claude/slack-config.json << EOF" >&2
+    echo "   mkdir -p .claude/plugins/slack-integration" >&2
+    echo "   cat > .claude/plugins/slack-integration/slack-config.json << EOF" >&2
     echo '   {' >&2
     echo '     "bot_token": "xoxb-your-bot-token-here",' >&2
     echo '     "channel": "#claude-code"' >&2
@@ -34,8 +34,8 @@ else
     echo '   EOF' >&2
     echo "" >&2
     echo "2. 전역 설정 (모든 프로젝트에서 사용):" >&2
-    echo "   mkdir -p ~/.claude" >&2
-    echo "   cat > ~/.claude/slack-config.json << EOF" >&2
+    echo "   mkdir -p ~/.claude/plugins/slack-integration" >&2
+    echo "   cat > ~/.claude/plugins/slack-integration/slack-config.json << EOF" >&2
     echo '   {' >&2
     echo '     "bot_token": "xoxb-your-bot-token-here",' >&2
     echo '     "channel": "#claude-code"' >&2
@@ -47,7 +47,7 @@ fi
 # 필수 설정 체크
 if [ -z "$SLACK_BOT_TOKEN" ] || [ "$SLACK_BOT_TOKEN" = "null" ]; then
     echo "오류: bot_token이 설정되지 않았습니다." >&2
-    echo "~/.claude/slack-config.json 파일의 bot_token을 확인해주세요." >&2
+    echo "~/.claude/plugins/slack-integration/slack-config.json 파일의 bot_token을 확인해주세요." >&2
     exit 1
 fi
 
