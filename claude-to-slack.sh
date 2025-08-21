@@ -1,8 +1,55 @@
 #!/bin/bash
 
-SLACK_WEBHOOK_URL="https://hooks.slack.com/services/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"
-SLACK_BOT_TOKEN="xoxb-5667922673987-9398074401537-vR5PwrVxjxdN6egufESEwx6G"
-SLACK_CHANNEL="C09BLQS50BT"  # claude-code-logs 채널 ID
+# Slack 설정 파일 경로 (프로젝트별 > 전역)
+PROJECT_SLACK_CONFIG="$(pwd)/.claude/slack-config.json"
+GLOBAL_SLACK_CONFIG="$HOME/.claude/slack-config.json"
+
+# 기본값 설정
+SLACK_BOT_TOKEN=""
+SLACK_CHANNEL="#claude-code"
+USED_CONFIG_FILE=""
+
+# 설정 파일 우선순위: 프로젝트별 > 전역
+if [ -f "$PROJECT_SLACK_CONFIG" ]; then
+    SLACK_BOT_TOKEN=$(jq -r '.bot_token // empty' "$PROJECT_SLACK_CONFIG")
+    SLACK_CHANNEL=$(jq -r '.channel // "#claude-code"' "$PROJECT_SLACK_CONFIG")
+    USED_CONFIG_FILE="$PROJECT_SLACK_CONFIG"
+elif [ -f "$GLOBAL_SLACK_CONFIG" ]; then
+    SLACK_BOT_TOKEN=$(jq -r '.bot_token // empty' "$GLOBAL_SLACK_CONFIG")
+    SLACK_CHANNEL=$(jq -r '.channel // "#claude-code"' "$GLOBAL_SLACK_CONFIG")
+    USED_CONFIG_FILE="$GLOBAL_SLACK_CONFIG"
+else
+    # 설정 파일이 없으면 생성 안내
+    echo "오류: Slack 설정 파일이 없습니다." >&2
+    echo "" >&2
+    echo "다음 중 하나의 설정 파일을 생성해주세요:" >&2
+    echo "" >&2
+    echo "1. 프로젝트별 설정 (이 프로젝트에서만 사용):" >&2
+    echo "   mkdir -p .claude" >&2
+    echo "   cat > .claude/slack-config.json << EOF" >&2
+    echo '   {' >&2
+    echo '     "bot_token": "xoxb-your-bot-token-here",' >&2
+    echo '     "channel": "#claude-code"' >&2
+    echo '   }' >&2
+    echo '   EOF' >&2
+    echo "" >&2
+    echo "2. 전역 설정 (모든 프로젝트에서 사용):" >&2
+    echo "   mkdir -p ~/.claude" >&2
+    echo "   cat > ~/.claude/slack-config.json << EOF" >&2
+    echo '   {' >&2
+    echo '     "bot_token": "xoxb-your-bot-token-here",' >&2
+    echo '     "channel": "#claude-code"' >&2
+    echo '   }' >&2
+    echo '   EOF' >&2
+    exit 1
+fi
+
+# 필수 설정 체크
+if [ -z "$SLACK_BOT_TOKEN" ] || [ "$SLACK_BOT_TOKEN" = "null" ]; then
+    echo "오류: bot_token이 설정되지 않았습니다." >&2
+    echo "~/.claude/slack-config.json 파일의 bot_token을 확인해주세요." >&2
+    exit 1
+fi
 
 # Hook 데이터 읽기
 input=$(cat)
