@@ -13,7 +13,7 @@ Claude Code CLI의 프롬프트와 AI 응답을 실시간으로 Slack 채널에 
 
 ### 1단계: 원라인 설치
 ```bash
-curl -fsSL https://raw.githubusercontent.com/your-repo/cclogmon/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/nebula19/claudecode-to-slack/main/install.sh | bash
 ```
 
 ### 2단계: Slack Bot 설정

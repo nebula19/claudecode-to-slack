@@ -6,7 +6,7 @@ Claude Code CLI의 프롬프트와 AI 응답을 실시간으로 Slack 쓰레드�
 
 ### 자동 설치 스크립트 사용
 ```bash
-curl -fsSL https://raw.githubusercontent.com/your-repo/cclogmon/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/nebula19/claudecode-to-slack/main/install.sh | bash
 ```
 
 스크립트가 다음을 자동으로 수행합니다:
@@ -56,7 +56,7 @@ chmod 600 .claude/plugins/slack-integration/slack-config.json
 mkdir -p .claude/plugins/slack-integration
 
 # 2. 스크립트 다운로드
-curl -o .claude/plugins/slack-integration/claude-to-slack.sh https://raw.githubusercontent.com/your-repo/cclogmon/main/claude-to-slack.sh
+curl -o .claude/plugins/slack-integration/claude-to-slack.sh https://raw.githubusercontent.com/nebula19/claudecode-to-slack/main/claude-to-slack.sh
 
 # 3. 실행 권한 부여
 chmod +x .claude/plugins/slack-integration/claude-to-slack.sh
