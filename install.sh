@@ -88,6 +88,12 @@ echo "📥 스크립트 다운로드 중..."
 SCRIPT_URL="https://raw.githubusercontent.com/nebula19/claudecode-to-slack/main_2/claude-to-slack.sh"
 SCRIPT_PATH="$SLACK_PLUGIN_DIR/claude-to-slack.sh"
 
+# 기존 스크립트가 있으면 백업
+if [ -f "$SCRIPT_PATH" ]; then
+    echo "기존 스크립트를 백업합니다..."
+    cp "$SCRIPT_PATH" "${SCRIPT_PATH}.backup.$(date +%Y%m%d_%H%M%S)"
+fi
+
 # 현재 디렉토리에서 스크립트 복사 (개발용)
 if [ -f "$(pwd)/.claude/plugins/slack-integration/claude-to-slack.sh" ]; then
     echo "로컬 스크립트를 사용합니다..."
@@ -183,15 +189,45 @@ echo "🧪 Slack Bot 연결 테스트 중..."
 test_response=$(curl -s -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
     "https://slack.com/api/auth.test")
 
+echo "응답: $test_response" >&2  # 디버깅용
+
 if echo "$test_response" | jq -e '.ok' > /dev/null 2>&1; then
     bot_name=$(echo "$test_response" | jq -r '.user')
     team_name=$(echo "$test_response" | jq -r '.team')
     echo -e "${GREEN}✅ Bot 연결 성공: $bot_name @ $team_name${NC}"
 else
     echo -e "${YELLOW}⚠️  Bot 연결 테스트 실패${NC}"
+    
+    # 에러 상세 정보 출력
+    if echo "$test_response" | jq -e '.error' > /dev/null 2>&1; then
+        error_msg=$(echo "$test_response" | jq -r '.error')
+        echo "에러: $error_msg"
+        
+        case "$error_msg" in
+            "invalid_auth")
+                echo "❌ Bot Token이 잘못되었습니다. xoxb-로 시작하는 올바른 토큰인지 확인하세요."
+                ;;
+            "account_inactive")
+                echo "❌ 계정이 비활성화되어 있습니다."
+                ;;
+            "token_revoked")
+                echo "❌ 토큰이 취소되었습니다. 새로운 토큰을 발급받으세요."
+                ;;
+            *)
+                echo "❌ 알 수 없는 에러입니다."
+                ;;
+        esac
+    fi
+    
+    echo ""
     echo "Bot Token을 확인하고 다음 권한이 있는지 확인해주세요:"
     echo "  - chat:write"
     echo "  - chat:write.public"
+    echo ""
+    echo "🔧 해결 방법:"
+    echo "1. https://api.slack.com/apps 에서 앱 확인"
+    echo "2. OAuth & Permissions → Bot Token Scopes 권한 확인"
+    echo "3. Install to Workspace 다시 실행"
 fi
 
 # 설치 완료
