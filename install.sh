@@ -40,7 +40,7 @@ echo -e "${BLUE}🔑 Slack Bot Token을 입력해주세요${NC}"
 echo "형식: xoxb-..."
 echo "(Slack App > OAuth & Permissions > Bot User OAuth Token)"
 echo ""
-read -p "Bot Token: " SLACK_BOT_TOKEN
+read -p "Bot Token: " SLACK_BOT_TOKEN < /dev/tty
 
 if [[ ! "$SLACK_BOT_TOKEN" =~ ^xoxb- ]]; then
     echo -e "${RED}오류: 올바른 Bot Token 형식이 아닙니다. (xoxb-로 시작해야 함)${NC}"
@@ -50,7 +50,7 @@ fi
 # Slack 채널 입력 받기
 echo ""
 echo -e "${BLUE}📢 메시지를 보낼 Slack 채널명을 입력해주세요${NC}"
-read -p "채널명 (예: claude-code): " SLACK_CHANNEL_INPUT
+read -p "채널명 (예: claude-code): " SLACK_CHANNEL_INPUT < /dev/tty
 
 # 채널명 형식 확인 및 수정
 if [[ -z "$SLACK_CHANNEL_INPUT" ]]; then
@@ -70,7 +70,7 @@ echo -e "${YELLOW}📝 설정 확인:${NC}"
 echo "Bot Token: ${SLACK_BOT_TOKEN:0:12}..."
 echo "채널: $SLACK_CHANNEL"
 echo ""
-read -p "계속하시겠습니까? (y/N): " confirm
+read -p "계속하시겠습니까? (y/N): " confirm < /dev/tty
 if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
     echo "설치를 취소했습니다."
     exit 0
