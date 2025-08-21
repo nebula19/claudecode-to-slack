@@ -85,7 +85,7 @@ mkdir -p "$SLACK_PLUGIN_DIR"
 
 # 스크립트 다운로드
 echo "📥 스크립트 다운로드 중..."
-SCRIPT_URL="https://raw.githubusercontent.com/your-repo/cclogmon/main/claude-to-slack.sh"
+SCRIPT_URL="https://raw.githubusercontent.com/nebula19/claudecode-to-slack/main_2/claude-to-slack.sh"
 SCRIPT_PATH="$SLACK_PLUGIN_DIR/claude-to-slack.sh"
 
 # 현재 디렉토리에서 스크립트 복사 (개발용)
