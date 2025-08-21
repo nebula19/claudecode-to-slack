@@ -2,7 +2,21 @@
 
 Claude Code CLI의 프롬프트와 AI 응답을 실시간으로 Slack 쓰레드에 전송하는 도구입니다.
 
-## 🚀 빠른 설정
+## 🚀 빠른 설치 (원라인 설치)
+
+### 자동 설치 스크립트 사용
+```bash
+curl -fsSL https://raw.githubusercontent.com/your-repo/cclogmon/main/install.sh | bash
+```
+
+스크립트가 다음을 자동으로 수행합니다:
+- Bot Token 입력 받기
+- 채널명 입력 받기  
+- 설정 파일 자동 생성
+- Claude Code Hook 자동 설정
+- Bot 연결 테스트
+
+## 📋 수동 설정 (필요시)
 
 ### 1. Slack Bot 생성
 1. https://api.slack.com/apps 에서 "Create New App" 클릭
@@ -18,28 +32,37 @@ Claude Code CLI의 프롬프트와 AI 응답을 실시간으로 Slack 쓰레드�
 3. **Bot User OAuth Token** 복사 (`xoxb-...` 형태)
 
 ### 3. 채널 설정
-1. Slack에서 `#claude-code` 채널 생성 (또는 원하는 이름)
+1. Slack에서 원하는 채널 생성 (예: `#claude-code`)
 2. 채널에 Bot 초대: `/invite @Claude Code Monitor`
 
-### 4. 환경변수 설정
+### 4. 수동 설정 파일 생성
 ```bash
-# Bot Token 설정 (필수)
-export CLAUDE_SLACK_BOT_TOKEN="xoxb-your-bot-token-here"
+# 프로젝트별 설정 (해당 프로젝트에서만 사용)
+mkdir -p .claude/plugins/slack-integration
+cat > .claude/plugins/slack-integration/slack-config.json << 'EOF'
+{
+  "bot_token": "xoxb-your-bot-token-here",
+  "channel": "#your-channel-name"
+}
+EOF
 
-# 채널 설정 (선택사항, 기본값: #claude-code)  
-export CLAUDE_SLACK_CHANNEL="#your-channel-name"
+# 권한 제한
+chmod 600 .claude/plugins/slack-integration/slack-config.json
 ```
 
-### 5. 스크립트 설치
+### 5. 수동 스크립트 설치
 ```bash
-# 1. 스크립트 다운로드
-curl -o ~/.claude/claude-to-slack.sh https://raw.githubusercontent.com/your-repo/claude-to-slack.sh
+# 1. 프로젝트 .claude 디렉토리 생성
+mkdir -p .claude/plugins/slack-integration
 
-# 2. 실행 권한 부여
-chmod +x ~/.claude/claude-to-slack.sh
+# 2. 스크립트 다운로드
+curl -o .claude/plugins/slack-integration/claude-to-slack.sh https://raw.githubusercontent.com/your-repo/cclogmon/main/claude-to-slack.sh
 
-# 3. Claude Code Hook 설정
-cat > ~/.claude/settings.json << 'EOF'
+# 3. 실행 권한 부여
+chmod +x .claude/plugins/slack-integration/claude-to-slack.sh
+
+# 4. Claude Code Hook 설정
+cat > .claude/settings.local.json << 'EOF'
 {
   "hooks": {
     "Stop": [
@@ -48,7 +71,7 @@ cat > ~/.claude/settings.json << 'EOF'
         "hooks": [
           {
             "type": "command",
-            "command": "$HOME/.claude/claude-to-slack.sh"
+            "command": "./.claude/plugins/slack-integration/claude-to-slack.sh"
           }
         ]
       }
@@ -60,28 +83,26 @@ EOF
 
 ## 🔧 고급 설정
 
-### 설정 파일 사용
-환경변수 대신 설정 파일을 사용할 수 있습니다:
+### 프로젝트별 설정
+각 프로젝트마다 다른 채널을 사용하려면 프로젝트 디렉토리에 설정 파일을 생성:
 
 ```bash
-# ~/.claude/slack-config.json
+# 프로젝트 루트에서
+mkdir -p .claude/plugins/slack-integration
+cat > .claude/plugins/slack-integration/slack-config.json << 'EOF'
 {
   "bot_token": "xoxb-your-bot-token",
-  "channel": "#claude-code"
+  "channel": "#project-specific-channel"
 }
+EOF
+
+# .gitignore에 추가
+echo ".claude/plugins/slack-integration/slack-config.json" >> .gitignore
 ```
 
-### 다중 프로젝트 설정
-각 프로젝트마다 다른 채널을 사용하려면:
-
-```bash
-# 프로젝트별 환경변수 설정
-cd /path/to/project1
-export CLAUDE_SLACK_CHANNEL="#project1-logs"
-
-cd /path/to/project2  
-export CLAUDE_SLACK_CHANNEL="#project2-logs"
-```
+### 설정 파일 우선순위
+1. **프로젝트별 설정**: `./.claude/plugins/slack-integration/slack-config.json`
+2. **전역 설정**: `~/.claude/slack-config.json`
 
 ## 📱 동작 방식
 

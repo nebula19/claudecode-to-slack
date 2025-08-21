@@ -1,7 +1,25 @@
 {
   "permissions": {
-    "allow": [],
+    "allow": [
+      "Bash(chmod:*)",
+      "Bash(cat:*)",
+      "Bash(mv:*)",
+      "Bash(mkdir:*)"
+    ],
     "deny": [],
     "ask": []
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./.claude/plugins/slack-integration/claude-to-slack.sh"
+          }
+        ]
+      }
+    ]
   }
 }
