@@ -4,12 +4,27 @@
       "Bash(chmod:*)",
       "Bash(cat:*)",
       "Bash(mv:*)",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "Bash(cp:*)"
     ],
     "deny": [],
-    "ask": []
+    "ask": [],
+    "additionalDirectories": [
+      "/private/tmp/test-project"
+    ]
   },
   "hooks": {
+    "UserPromptSubmit": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./.claude/plugins/slack-integration/claude-to-slack.sh"
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "matcher": "*",
